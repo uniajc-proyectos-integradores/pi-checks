@@ -1,0 +1,26 @@
+# Composite action de PI Checks.
+# Cuando pi-checks se publique como repositorio propio, los repos estudiantiles
+# la usan con:   uses: Gabriel06241/pi-checks@v1
+name: "PI Checks"
+description: "Feedback temprano para repositorios Java del Proyecto Integrador UNIAJC. Genera evidencia pedagógica; no asigna notas."
+branding:
+  icon: "check-circle"
+  color: "blue"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configurar Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "17"
+        cache: maven
+
+    - name: Construir pi-checks
+      shell: bash
+      run: mvn -q -f "${{ github.action_path }}/pom.xml" package -DskipTests
+
+    - name: Ejecutar checks
+      shell: bash
+      run: java -jar "${{ github.action_path }}/target/pi-checks.jar" "$GITHUB_WORKSPACE"
