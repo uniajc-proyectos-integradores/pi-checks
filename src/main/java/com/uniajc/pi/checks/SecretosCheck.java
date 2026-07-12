@@ -13,20 +13,33 @@ import java.util.stream.Stream;
  *
  * REGLA CRÍTICA: el valor del secreto detectado JAMÁS se incluye en el
  * hallazgo — solo archivo y línea. Ver docs/PRIVACIDAD-IA.md.
+ *
+ * v2 (auditoría Codex 2026-07-12): las palabras fuertes (password, secret...)
+ * se detectan con prefijos/sufijos (DB_PASSWORD, passwordDb); las palabras
+ * débiles (clave, pass) solo son hallazgo si el archivo tiene contexto de
+ * BD/credenciales, para no penalizar valores de dominio como clave = "norte".
  */
 public class SecretosCheck implements Check {
 
-    /** Asignaciones tipo: String PASSWORD = "valor"; clave = "valor"; pwd="valor" */
-    private static final Pattern ASIGNACION_CREDENCIAL = Pattern.compile(
-            "(?i)(password|passwd|pwd|clave|contrasena|contraseña|secret)\\s*=\\s*\"[^\"]{1,}\"");
+    /** Palabras que casi siempre son credencial, con prefijo/sufijo: DB_PASSWORD, passwordDb… */
+    private static final Pattern ASIGNACION_FUERTE = Pattern.compile(
+            "(?i)\\w*(password|passwd|pwd|contrasena|contraseña|secret)\\w*\\s*=\\s*\"[^\"]+\"");
+
+    /** Palabras ambiguas en español/código: solo cuentan con contexto de BD. */
+    private static final Pattern ASIGNACION_DEBIL = Pattern.compile(
+            "(?i)\\w*(clave|pass)\\w*\\s*=\\s*\"[^\"]+\"");
+
+    /** Señales de que el archivo maneja conexión/credenciales de verdad. */
+    private static final Pattern CONTEXTO_CREDENCIALES = Pattern.compile(
+            "(?i)DriverManager|getConnection|java\\.sql|jdbc:|config\\.properties");
 
     /** Conexiones con usuario y clave literales: getConnection(url, "root", "1234") */
     private static final Pattern CONEXION_LITERAL = Pattern.compile(
             "getConnection\\s*\\([^)]*\"[^\"]*\"\\s*,\\s*\"[^\"]+\"\\s*\\)");
 
-    /** Claves de properties: db.password=valor */
+    /** Claves de properties: db.password=valor, clave_bd=valor… */
     private static final Pattern PROPERTY_CREDENCIAL = Pattern.compile(
-            "(?i)^\\s*[\\w.]*(password|passwd|pwd|clave|secret)\\s*=\\s*\\S+");
+            "(?i)^\\s*[\\w.]*(password|passwd|pwd|clave|secret|pass)[\\w.]*\\s*=\\s*\\S+");
 
     @Override
     public String id() {
@@ -57,13 +70,19 @@ public class SecretosCheck implements Check {
         }
         boolean esProperties = archivo.toString().endsWith(".properties");
         String rutaRelativa = repo.relativize(archivo).toString().replace('\\', '/');
+        boolean archivoConContexto = esProperties
+                || lineas.stream().anyMatch(l -> CONTEXTO_CREDENCIALES.matcher(l).find());
 
         for (int i = 0; i < lineas.size(); i++) {
             String linea = lineas.get(i);
-            boolean sospechosa = esProperties
-                    ? PROPERTY_CREDENCIAL.matcher(linea).find()
-                    : ASIGNACION_CREDENCIAL.matcher(linea).find()
-                            || CONEXION_LITERAL.matcher(linea).find();
+            boolean sospechosa;
+            if (esProperties) {
+                sospechosa = PROPERTY_CREDENCIAL.matcher(linea).find();
+            } else {
+                sospechosa = ASIGNACION_FUERTE.matcher(linea).find()
+                        || CONEXION_LITERAL.matcher(linea).find()
+                        || (archivoConContexto && ASIGNACION_DEBIL.matcher(linea).find());
+            }
             if (sospechosa) {
                 hallazgos.add(Hallazgo.error(id(),
                         "Posible credencial hardcodeada en `" + rutaRelativa + "` (línea "

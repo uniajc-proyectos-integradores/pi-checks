@@ -55,6 +55,26 @@ class ChecksTest {
     }
 
     @Test
+    void detectaVariantesDeNombresDeSecreto() throws IOException {
+        // Auditoría Codex 2026-07-12: DB_PASSWORD, CLAVE_BD y pass eran falsos negativos
+        List<Hallazgo> hallazgos = new SecretosCheck()
+                .ejecutar(FIXTURES.resolve("fail-secreto-variantes"));
+        // DB_PASSWORD (fuerte con sufijo), CLAVE_BD y pass (débiles con contexto BD).
+        // getConnection(..., pass) usa variable, no literal: correctamente NO se marca.
+        assertEquals(3, hallazgos.size(),
+                "Debe detectar las 3 variantes del fixture: " + hallazgos);
+    }
+
+    @Test
+    void noSeAlarmaConClaveDeDominioSinContextoBd() throws IOException {
+        // Auditoría Codex 2026-07-12: clave = "norte" era falso positivo
+        List<Hallazgo> hallazgos = new SecretosCheck()
+                .ejecutar(FIXTURES.resolve("pass-clave-no-secreta"));
+        assertEquals(List.of(), hallazgos,
+                "clave/claveDelMapa sin contexto de BD no son secretos: " + hallazgos);
+    }
+
+    @Test
     void advierteSiFaltaGitignore() throws IOException {
         List<Hallazgo> hallazgos = ejecutar("fail-sin-gitignore");
         assertTrue(hallazgos.stream().anyMatch(h ->
