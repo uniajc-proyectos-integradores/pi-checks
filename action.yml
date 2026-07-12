@@ -1,6 +1,6 @@
 # Composite action de PI Checks.
 # Cuando pi-checks se publique como repositorio propio, los repos estudiantiles
-# la usan con:   uses: Gabriel06241/pi-checks@v1
+# la usan con:   uses: uniajc-gperezm/pi-checks@v1
 name: "PI Checks"
 description: "Feedback temprano para repositorios Java del Proyecto Integrador UNIAJC. Genera evidencia pedagógica; no asigna notas."
 branding:
