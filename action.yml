@@ -1,6 +1,8 @@
 # Composite action de PI Checks.
-# Cuando pi-checks se publique como repositorio propio, los repos estudiantiles
-# la usan con:   uses: uniajc-gperezm/pi-checks@v1
+# Cuando pi-checks se publique en la organización (PI-005), los repos
+# estudiantiles la usan con:   uses: uniajc-proyectos-integradores/pi-checks@v1
+# PI-005 además reemplazará el paso de compilación por la descarga del jar de
+# la release (decisión #31: los repos privados facturan minutos de Actions).
 name: "PI Checks"
 description: "Feedback temprano para repositorios Java del Proyecto Integrador UNIAJC. Genera evidencia pedagógica; no asigna notas."
 branding:
