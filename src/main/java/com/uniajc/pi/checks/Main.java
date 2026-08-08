@@ -19,6 +19,7 @@ public class Main {
 
     static final List<Check> CHECKS = List.of(
             new EstructuraMavenCheck(),
+            new CompilaCheck(),
             new GitignoreCheck(),
             new SecretosCheck(),
             new EstructuraMvcCheck());

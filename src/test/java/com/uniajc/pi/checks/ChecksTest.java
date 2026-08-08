@@ -94,6 +94,45 @@ class ChecksTest {
     }
 
     @Test
+    void errorSiNoCompila() throws IOException {
+        List<Hallazgo> hallazgos = ejecutar("fail-no-compila");
+        Hallazgo compilaError = hallazgos.stream()
+                .filter(h -> h.checkId().equals("compila") && h.severidad() == Severidad.ERROR)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError(
+                        "Un proyecto con error de sintaxis debe fallar compila: " + hallazgos));
+        assertTrue(compilaError.sugerencia().contains("[ERROR]"),
+                "La sugerencia debe incluir las líneas [ERROR] reales de Maven, no un mensaje "
+                        + "genérico: " + compilaError.sugerencia());
+        assertTrue(compilaError.sugerencia().contains("src/main/java"),
+                "Debe conservar la ruta relativa del archivo con error: " + compilaError.sugerencia());
+        String rutaAbsolutaDelRepo = FIXTURES.resolve("fail-no-compila").toAbsolutePath().toString();
+        assertFalse(compilaError.sugerencia().contains(rutaAbsolutaDelRepo),
+                "La ruta absoluta local (expone usuario del SO) no debe llegar al reporte: "
+                        + compilaError.sugerencia());
+        assertFalse(compilaError.sugerencia().contains(System.getProperty("user.home")),
+                "El home del usuario que corre el checker no debe filtrarse al reporte: "
+                        + compilaError.sugerencia());
+    }
+
+    @Test
+    void ocultaCredencialesEmbebidasEnUrlDeSalidaMaven() {
+        // P2 auditoría Codex 2026-08-07: un mirror mal configurado puede
+        // imprimir su URL con usuario:clave embebidos en un mensaje de error.
+        // No forzamos a Maven a producir esto (depende de settings.xml del
+        // entorno); se prueba directo el saneamiento.
+        String linea = "[ERROR] No se pudo resolver via https://usuario:credencial-sintetica@"
+                + "mirror.ejemplo.com/repo/artefacto.jar";
+        String saneada = CompilaCheck.ocultarCredencialesUrl(linea);
+        assertFalse(saneada.contains("credencial-sintetica"),
+                "La credencial de la URL no debe llegar al reporte: " + saneada);
+        assertFalse(saneada.contains("usuario:credencial-sintetica"),
+                "El usuario:clave completo no debe llegar al reporte: " + saneada);
+        assertTrue(saneada.contains("https://****@mirror.ejemplo.com"),
+                "Debe conservar el host, solo enmascarar usuario y clave: " + saneada);
+    }
+
+    @Test
     void errorSiFaltaPomXml() throws IOException {
         Path temporal = Files.createTempDirectory("repo-vacio");
         List<Hallazgo> hallazgos = Main.ejecutarTodos(temporal);
