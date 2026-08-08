@@ -5,6 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,9 +37,16 @@ public class Main {
             System.exit(2);
         }
 
-        List<Hallazgo> hallazgos = ejecutarTodos(repo);
+        // Un solo instante para decidir la fase Y declararla en el reporte.
+        // Los checks (compila puede tardar hasta 120s) corren DESPUÉS de
+        // capturarlo, para que un run que cruza el corte durante su propia
+        // ejecución no reporte una fase distinta de la que aplicó.
+        Instant ahora = Clock.systemDefaultZone().instant();
+        Fase fase = FaseAprendizaje.resolver(ahora);
+        List<Hallazgo> hallazgos = FaseAprendizaje.aplicar(ejecutarTodos(repo), fase);
+
         Reporte reporte = new Reporte();
-        String markdown = reporte.generar(hallazgos);
+        String markdown = reporte.generar(hallazgos, fase, ahora);
 
         System.out.println(markdown);
         String summaryPath = System.getenv("GITHUB_STEP_SUMMARY");

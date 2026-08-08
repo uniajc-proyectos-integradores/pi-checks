@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -47,7 +49,8 @@ class ChecksTest {
     @Test
     void jamasReportaElValorDelSecreto() throws IOException {
         List<Hallazgo> hallazgos = ejecutar("fail-secreto");
-        String reporte = new Reporte().generar(hallazgos);
+        Clock clock = Clock.fixed(FaseAprendizaje.CORTE.toInstant(), FaseAprendizaje.ZONA);
+        String reporte = new Reporte().generar(hallazgos, Fase.EVALUACION, clock.instant());
         assertFalse(reporte.contains("secreto-sintetico-123"),
                 "El valor del secreto NO puede aparecer en el reporte");
         assertFalse(reporte.contains("otro-secreto-sintetico"),
@@ -144,7 +147,87 @@ class ChecksTest {
     @Test
     void elReporteSiempreAclaraQueNoEsNota() throws IOException {
         Reporte reporte = new Reporte();
-        assertTrue(reporte.generar(List.of()).contains("no una nota"));
-        assertTrue(reporte.generar(ejecutar("fail-secreto")).contains("No asignan notas"));
+        Clock clock = Clock.fixed(FaseAprendizaje.CORTE.toInstant(), FaseAprendizaje.ZONA);
+        assertTrue(reporte.generar(List.of(), Fase.EVALUACION, clock.instant()).contains("no una nota"));
+        assertTrue(reporte.generar(ejecutar("fail-secreto"), Fase.EVALUACION, clock.instant())
+                .contains("No asignan notas"));
+    }
+
+    @Test
+    void modoAprendizajeDegradaErroresMenosSecretos() throws IOException {
+        List<Hallazgo> crudos = ejecutar("fail-no-compila");
+        Instant antesDelCorte = FaseAprendizaje.CORTE.toInstant().minusSeconds(3600);
+        Fase fase = FaseAprendizaje.resolver(antesDelCorte);
+        assertEquals(Fase.APRENDIZAJE, fase);
+
+        List<Hallazgo> ajustados = FaseAprendizaje.aplicar(crudos, fase);
+        assertTrue(ajustados.stream().anyMatch(h ->
+                        h.checkId().equals("compila") && h.severidad() == Severidad.ADVERTENCIA),
+                "compila debe degradarse a ADVERTENCIA en modo aprendizaje: " + ajustados);
+        assertFalse(new Reporte().hayErrores(ajustados),
+                "En modo aprendizaje un fallo de compilación no debe fallar el workflow");
+    }
+
+    @Test
+    void modoAprendizajeNuncaDegradaSecretos() throws IOException {
+        List<Hallazgo> crudos = ejecutar("fail-secreto");
+        Instant antesDelCorte = FaseAprendizaje.CORTE.toInstant().minusSeconds(3600);
+        Fase fase = FaseAprendizaje.resolver(antesDelCorte);
+
+        List<Hallazgo> ajustados = FaseAprendizaje.aplicar(crudos, fase);
+        assertTrue(new Reporte().hayErrores(ajustados),
+                "secretos debe seguir fallando el workflow incluso en modo aprendizaje");
+
+        List<Hallazgo> secretosCrudos = crudos.stream().filter(h -> h.checkId().equals("secretos")).toList();
+        List<Hallazgo> secretosAjustados = ajustados.stream()
+                .filter(h -> h.checkId().equals("secretos")).toList();
+        assertFalse(secretosCrudos.isEmpty(), "El fixture debe producir al menos un hallazgo de secretos");
+        assertEquals(secretosCrudos, secretosAjustados,
+                "Ningún hallazgo de secretos debe cambiar de severidad ni de contenido: " + ajustados);
+    }
+
+    @Test
+    void modoEvaluacionNoDegradaNada() throws IOException {
+        List<Hallazgo> crudos = ejecutar("fail-no-compila");
+        Instant despuesDelCorte = FaseAprendizaje.CORTE.toInstant().plusSeconds(1);
+        Fase fase = FaseAprendizaje.resolver(despuesDelCorte);
+        assertEquals(Fase.EVALUACION, fase);
+
+        assertEquals(crudos, FaseAprendizaje.aplicar(crudos, fase),
+                "En modo evaluación no se toca ningún hallazgo");
+    }
+
+    @Test
+    void resuelveFaseExactamenteEnElLimite() {
+        // Criterio (c) de PI-021: tests a AMBOS lados del limite exacto, no solo
+        // con margenes amplios.
+        assertEquals(Fase.APRENDIZAJE,
+                FaseAprendizaje.resolver(FaseAprendizaje.CORTE.toInstant().minusNanos(1)),
+                "Un nanosegundo antes del corte todavia es aprendizaje");
+        assertEquals(Fase.EVALUACION,
+                FaseAprendizaje.resolver(FaseAprendizaje.CORTE.toInstant()),
+                "Exactamente en el corte ya es evaluacion");
+    }
+
+    @Test
+    void faseYReporteUsanElMismoInstanteCapturado() {
+        // Hallazgo P1 de Codex 2026-08-07: Main llamaba clock.instant() dos
+        // veces (una para resolver la fase, otra para el reporte) con checks
+        // de hasta 120s entre medio, pudiendo cruzar el corte entre ambas
+        // llamadas. FaseAprendizaje.resolver ahora exige un Instant ya
+        // capturado, no un Clock, para que sea imposible repetir la consulta.
+        Instant capturadoUnaVez = FaseAprendizaje.CORTE.toInstant().minusSeconds(30);
+        Fase fase = FaseAprendizaje.resolver(capturadoUnaVez);
+        String md = new Reporte().generar(List.of(), fase, capturadoUnaVez);
+        assertTrue(md.contains("aprendizaje"));
+    }
+
+    @Test
+    void reporteDeclaraVersionFaseInstanteYCorte() {
+        Clock clock = Clock.fixed(FaseAprendizaje.CORTE.toInstant().minusSeconds(60), FaseAprendizaje.ZONA);
+        String md = new Reporte().generar(List.of(), Fase.APRENDIZAJE, clock.instant());
+        assertTrue(md.contains(Version.ACTUAL), "Debe declarar la versión: " + md);
+        assertTrue(md.contains("aprendizaje"), "Debe declarar la fase: " + md);
+        assertTrue(md.contains("2026-09-07"), "Debe declarar la fecha de corte: " + md);
     }
 }

@@ -1,13 +1,17 @@
 package com.uniajc.pi.checks;
 
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /** Genera el resumen en Markdown (para stdout y GITHUB_STEP_SUMMARY). */
 public class Reporte {
 
-    public String generar(List<Hallazgo> hallazgos) {
+    public String generar(List<Hallazgo> hallazgos, Fase fase, Instant instante) {
         StringBuilder md = new StringBuilder();
         md.append("# 🎓 PI Checks — Feedback temprano\n\n");
+        md.append(banner(fase, instante));
 
         long errores = contar(hallazgos, Severidad.ERROR);
         long advertencias = contar(hallazgos, Severidad.ADVERTENCIA);
@@ -55,6 +59,21 @@ public class Reporte {
 
     public boolean hayErrores(List<Hallazgo> hallazgos) {
         return contar(hallazgos, Severidad.ERROR) > 0;
+    }
+
+    private String banner(Fase fase, Instant instante) {
+        String instanteFmt = DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                .format(instante.truncatedTo(ChronoUnit.SECONDS).atZone(FaseAprendizaje.ZONA));
+        StringBuilder b = new StringBuilder();
+        b.append("`pi-checks ").append(Version.ACTUAL).append("` · fase **")
+         .append(fase == Fase.APRENDIZAJE ? "aprendizaje" : "evaluación").append("** · evaluado ")
+         .append(instanteFmt).append(" (").append(FaseAprendizaje.ZONA).append(") · corte ")
+         .append(FaseAprendizaje.CORTE.toLocalDate()).append("\n\n");
+        if (fase == Fase.APRENDIZAJE) {
+            b.append("> ℹ️ **Modo aprendizaje activo.** Solo `secretos` falla el workflow; el resto de ")
+             .append("hallazgos ERROR se muestra como advertencia hasta el corte.\n\n");
+        }
+        return b.toString();
     }
 
     private long contar(List<Hallazgo> hallazgos, Severidad severidad) {
