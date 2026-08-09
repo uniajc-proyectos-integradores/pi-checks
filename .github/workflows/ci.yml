@@ -30,3 +30,14 @@ jobs:
 
       - name: Empaquetar CLI
         run: mvn -q package -DskipTests
+
+  # Corre la composite action publicada de verdad (uses: ./), no solo el jar
+  # local -- mismo mecanismo que usaran los repos estudiantiles con @v1
+  # (descarga de release, verificacion de checksum, gitleaks). P1 auditoria
+  # Codex PR #12 de la plataforma: un CI verde del jar aislado no prueba el
+  # action.yml distribuido.
+  self-test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: ./
