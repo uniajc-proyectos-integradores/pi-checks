@@ -35,7 +35,16 @@ runs:
           --clobber
         echo "7aba24e2844f26112e68e1487f35ab3bab18db2a722ca82e1fab894023d69a33  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
 
+    # if: success() || failure() en este paso y los dos siguientes: por
+    # defecto, un step que falla detiene el job y salta los que faltan -- eso
+    # dejaria a gitleaks SIN correr si SecretosCheck ya encontro algo, justo
+    # el escenario donde mas importa la defensa en profundidad. Con esta
+    # condicion (a diferencia de always(), tambien corren si el job se
+    # cancela) los tres corren siempre que el job no se cancele, y el job
+    # falla si CUALQUIERA falla (ninguno usa continue-on-error, que si
+    # eximiria a ese paso del resultado final).
     - name: Ejecutar checks
+      if: ${{ success() || failure() }}
       shell: bash
       run: java -jar "${{ runner.temp }}/pi-checks/pi-checks.jar" "$GITHUB_WORKSPACE"
 
@@ -46,6 +55,7 @@ runs:
     # tiene presupuesto (decisión #31/#34). --redact evita que un valor
     # detectado se imprima en el log.
     - name: Instalar gitleaks 8.30.1
+      if: ${{ success() || failure() }}
       shell: bash
       run: |
         curl -fsSL -o "${{ runner.temp }}/gitleaks.tar.gz" \
@@ -55,6 +65,7 @@ runs:
         chmod +x "${{ runner.temp }}/gitleaks"
 
     - name: Escanear secretos con gitleaks (nunca imprime el valor)
+      if: ${{ success() || failure() }}
       shell: bash
       run: |
         "${{ runner.temp }}/gitleaks" detect --source "$GITHUB_WORKSPACE" --redact --no-banner --exit-code 1
