@@ -56,4 +56,5 @@ runs:
 
     - name: Escanear secretos con gitleaks (nunca imprime el valor)
       shell: bash
-      run: "${{ runner.temp }}/gitleaks" detect --source "$GITHUB_WORKSPACE" --redact --no-banner --exit-code 1
+      run: |
+        "${{ runner.temp }}/gitleaks" detect --source "$GITHUB_WORKSPACE" --redact --no-banner --exit-code 1
