@@ -19,7 +19,11 @@ runs:
         distribution: temurin
         java-version: "17"
 
-    - name: Descargar pi-checks.jar de la release v1.0.0
+    - name: Descargar y verificar pi-checks.jar de la release v1.0.0
+      # Checksum fijo del jar de v1.0.0 (P1 auditoria Codex PR #12): un tag
+      # de release es mutable -- fijar solo el nombre del tag no autentica
+      # los bytes descargados. Si se publica un jar nuevo compatible con @v1,
+      # este hash debe actualizarse en el mismo commit.
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -29,6 +33,7 @@ runs:
           --pattern pi-checks.jar \
           --dir "${{ runner.temp }}/pi-checks" \
           --clobber
+        echo "7aba24e2844f26112e68e1487f35ab3bab18db2a722ca82e1fab894023d69a33  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
 
     - name: Ejecutar checks
       shell: bash
