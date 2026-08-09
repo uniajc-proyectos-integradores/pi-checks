@@ -33,3 +33,22 @@ runs:
     - name: Ejecutar checks
       shell: bash
       run: java -jar "${{ runner.temp }}/pi-checks/pi-checks.jar" "$GITHUB_WORKSPACE"
+
+    # Escáner de secretos reconocido (PI-005, complementa a SecretosCheck).
+    # Se instala el binario de gitleaks (MIT, sin licencia) directamente en
+    # vez de usar gitleaks/gitleaks-action: ese wrapper exige
+    # GITLEAKS_LICENSE de pago para cuentas de organización, y esta org no
+    # tiene presupuesto (decisión #31/#34). --redact evita que un valor
+    # detectado se imprima en el log.
+    - name: Instalar gitleaks 8.30.1
+      shell: bash
+      run: |
+        curl -fsSL -o "${{ runner.temp }}/gitleaks.tar.gz" \
+          https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+        echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  ${{ runner.temp }}/gitleaks.tar.gz" | sha256sum -c -
+        tar -xzf "${{ runner.temp }}/gitleaks.tar.gz" -C "${{ runner.temp }}" gitleaks
+        chmod +x "${{ runner.temp }}/gitleaks"
+
+    - name: Escanear secretos con gitleaks (nunca imprime el valor)
+      shell: bash
+      run: "${{ runner.temp }}/gitleaks" detect --source "$GITHUB_WORKSPACE" --redact --no-banner --exit-code 1
