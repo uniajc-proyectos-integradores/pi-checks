@@ -30,3 +30,21 @@ jobs:
 
       - name: Empaquetar CLI
         run: mvn -q package -DskipTests
+
+  # Corre la composite action publicada de verdad (uses: ./), no solo el jar
+  # local -- mismo mecanismo que usaran los repos estudiantiles con @v1
+  # (descarga de release, verificacion de checksum, gitleaks). P1 auditoria
+  # Codex PR #12 de la plataforma: un CI verde del jar aislado no prueba el
+  # action.yml distribuido.
+  # continue-on-error: SecretosCheck escanea sus propios patrones de deteccion
+  # (literales como "password" en sus regex) y se detecta a si mismo -- falso
+  # positivo esperado de dogfooding, no un fallo del pipeline. secretos nunca
+  # se degrada (decision #34), asi que el job real "fallaria" aunque el
+  # mecanismo (descarga, checksum, ejecucion) funcione bien. No es el check
+  # requerido por ninguna ruleset; es solo evidencia informativa en cada CI.
+  self-test-action:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: ./
