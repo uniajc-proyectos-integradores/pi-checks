@@ -1,0 +1,20 @@
+name: Self-test de la composite action
+
+# Valida uses: ./ (equivalente a como un repo estudiantil usaria
+# uniajc-proyectos-integradores/pi-checks@v1) sobre un runner real, no
+# solo localmente. Manual: no debe correr en cada push del repo del
+# checker.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Ejecutar la propia action (uses: ./)
+        uses: ./
