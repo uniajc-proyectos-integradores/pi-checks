@@ -228,6 +228,6 @@ class ChecksTest {
         String md = new Reporte().generar(List.of(), Fase.APRENDIZAJE, clock.instant());
         assertTrue(md.contains(Version.ACTUAL), "Debe declarar la versión: " + md);
         assertTrue(md.contains("aprendizaje"), "Debe declarar la fase: " + md);
-        assertTrue(md.contains("2026-09-07"), "Debe declarar la fecha de corte: " + md);
+        assertTrue(md.contains("2026-09-28"), "Debe declarar la fecha de corte: " + md);
     }
 }

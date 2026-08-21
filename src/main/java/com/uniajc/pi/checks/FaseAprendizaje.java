@@ -15,11 +15,15 @@ import java.util.List;
  * workflow, una variable de entorno ni un archivo del repo estudiantil.
  * `secretos` nunca se degrada — un secreto expuesto falla el workflow en
  * cualquier fase.
+ *
+ * Corte movido de 2026-09-07 a 2026-09-28 (decisión #41): el terremoto de
+ * Cali del 10 de agosto de 2026 corrió el inicio del semestre del 3 al 24
+ * de agosto, y con él todo el calendario académico +21 días.
  */
 public final class FaseAprendizaje {
 
     public static final ZoneId ZONA = ZoneId.of("America/Bogota");
-    public static final ZonedDateTime CORTE = ZonedDateTime.of(2026, 9, 7, 0, 0, 0, 0, ZONA);
+    public static final ZonedDateTime CORTE = ZonedDateTime.of(2026, 9, 28, 0, 0, 0, 0, ZONA);
 
     private static final String CHECK_NUNCA_DEGRADADO = "secretos";
 
