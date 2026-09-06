@@ -1,8 +1,12 @@
 # Composite action de PI Checks. Los repos estudiantiles la usan con:
 #   uses: uniajc-proyectos-integradores/pi-checks@v1
-# Descarga el jar ya compilado de la release v1.0.0 (PI-005) en vez de
+# Descarga el jar ya compilado de una release (PI-005) en vez de
 # compilar en cada run: los repos de equipo son privados y cada minuto
 # de Actions cuenta contra la bolsa mensual de la organizacion (decision #31).
+# El tag de release descargado aqui, el checksum y el numero de version que
+# el jar declara en su propio reporte (Version.ACTUAL) deben moverse juntos
+# en el mismo commit -- si no, mover el alias @v1 no cambia lo que corre en
+# los repos consumidores (P1 auditoria Codex PR #6, decision #41).
 name: "PI Checks"
 description: "Feedback temprano para repositorios Java del Proyecto Integrador UNIAJC. Genera evidencia pedagógica; no asigna notas."
 branding:
@@ -19,8 +23,8 @@ runs:
         distribution: temurin
         java-version: "17"
 
-    - name: Descargar y verificar pi-checks.jar de la release v1.0.0
-      # Checksum fijo del jar de v1.0.0 (P1 auditoria Codex PR #12): un tag
+    - name: Descargar y verificar pi-checks.jar de la release v1.0.3
+      # Checksum fijo del jar de v1.0.3 (P1 auditoria Codex PR #12): un tag
       # de release es mutable -- fijar solo el nombre del tag no autentica
       # los bytes descargados. Si se publica un jar nuevo compatible con @v1,
       # este hash debe actualizarse en el mismo commit.
@@ -28,12 +32,12 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        gh release download v1.0.0 \
+        gh release download v1.0.3 \
           --repo uniajc-proyectos-integradores/pi-checks \
           --pattern pi-checks.jar \
           --dir "${{ runner.temp }}/pi-checks" \
           --clobber
-        echo "7aba24e2844f26112e68e1487f35ab3bab18db2a722ca82e1fab894023d69a33  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
+        echo "c5f4ecab46bc3a59be1c421101854ad1d25517aeffc6860543c32b72c5735ce0  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
 
     # if: success() || failure() en este paso y los dos siguientes: por
     # defecto, un step que falla detiene el job y salta los que faltan -- eso
