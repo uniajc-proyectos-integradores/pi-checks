@@ -28,6 +28,12 @@ runs:
       # de release es mutable -- fijar solo el nombre del tag no autentica
       # los bytes descargados. Si se publica un jar nuevo compatible con @v1,
       # este hash debe actualizarse en el mismo commit.
+      # PI-024 fix: el checksum commiteado junto con el bump de version no
+      # coincidia con el jar realmente publicado -- `mvn package` no produce
+      # jars reproducibles bit a bit (cada entrada del zip lleva timestamp de
+      # build), asi que el hash correcto es siempre el del jar YA subido a la
+      # release, calculado despues de publicarlo, nunca el de un build local
+      # previo.
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -37,7 +43,7 @@ runs:
           --pattern pi-checks.jar \
           --dir "${{ runner.temp }}/pi-checks" \
           --clobber
-        echo "c5f4ecab46bc3a59be1c421101854ad1d25517aeffc6860543c32b72c5735ce0  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
+        echo "781af5dbccc86734673a40620b006fb56685cd957795400f8e67bf4c53e4bfe2  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
 
     # if: success() || failure() en este paso y los dos siguientes: por
     # defecto, un step que falla detiene el job y salta los que faltan -- eso
