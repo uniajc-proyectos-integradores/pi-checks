@@ -28,6 +28,18 @@ runs:
       # de release es mutable -- fijar solo el nombre del tag no autentica
       # los bytes descargados. Si se publica un jar nuevo compatible con @v1,
       # este hash debe actualizarse en el mismo commit.
+      # PI-024 fix: una release anterior de v1.0.3 se publico con un jar
+      # reconstruido DESPUES de medir el checksum commiteado -- como
+      # `mvn package` no produce jars reproducibles bit a bit (cada entrada
+      # del zip lleva timestamp de build), el segundo build no coincidia con
+      # el hash ya commiteado. Procedimiento correcto para cada release:
+      # (1) construir el jar UNA sola vez: `mvn package`; (2) medir su
+      # checksum sobre ESE archivo; (3) commitear el checksum en action.yml;
+      # (4) mergear por squash; (5) crear el tag de release apuntando al
+      # commit squash ya mergeado en main -- nunca a la rama del PR, que
+      # desaparece; (6) subir a esa release exactamente el mismo archivo
+      # medido en el paso 2, sin reconstruirlo; (7) descargar el asset
+      # publicado y reverificar su checksum antes de mover el alias @v1.
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -37,7 +49,7 @@ runs:
           --pattern pi-checks.jar \
           --dir "${{ runner.temp }}/pi-checks" \
           --clobber
-        echo "c5f4ecab46bc3a59be1c421101854ad1d25517aeffc6860543c32b72c5735ce0  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
+        echo "781af5dbccc86734673a40620b006fb56685cd957795400f8e67bf4c53e4bfe2  ${{ runner.temp }}/pi-checks/pi-checks.jar" | sha256sum -c -
 
     # if: success() || failure() en este paso y los dos siguientes: por
     # defecto, un step que falla detiene el job y salta los que faltan -- eso
